@@ -129,7 +129,7 @@ function install_ucode {
 	vendor=$(cpu_vendor)
 	if [ $vendor == "GenuineIntel" ]; then
 		install_pac intel-ucode
-	elif [ $vendor == "AutenticAMD" ]; then
+	elif [ $vendor == "AuthenticAMD" ]; then
 		install_pac amd-ucode
 	else
 		log_er "Unknown CPU vendor"
