@@ -73,6 +73,7 @@ function input_pass {
 	printf "INP$CL_WHITE] $1 $CL_RED"
 	stty -echo
 	CHARCOUNT=0
+	PASSWORD=''
 	while IFS= read -p "$PROMPT" -r -s -n 1 CHAR
 	do
 	    # Enter - accept password
@@ -137,33 +138,23 @@ function install_ucode {
 	fi
 }
 
-function install_aur {
-	log_tx "Downloading $CL_GREY$1$CL_RESET"
-	curl -sLO https://aur.archlinux.org/cgit/aur.git/snapshot/$1.tar.gz
-	log_tx "Extracting $CL_GREY$1$CL_RESET"
-	tar -xf $1.tar.gz &>/dev/null
-	if [ $? -ne 0 ]; then
-		log_er "Failed to extract $CL_GREY$1$CL_RESET"
-		cd ..
-		rm -rf $1
-		rm -f $1.tar.gz
-		exit 1
-	fi
-	cd $1
+function install_yay {
+	log_tx "Downloading ${CL_GREY}yay$CL_RESET"
+	cd /home/$1
+  sudo -u $1 git clone https://aur.archlinux.org/yay-bin.git &>/dev/null
+	cd yay-bin
 	log_tx "Builing package"
-	makepkg -si &>/dev/null
+  sudo -u $1 makepkg --noconfirm -si &>/dev/null
 	if [ $? -ne 0 ]; then
-		log_er "Failed to build $CL_GREY$1$CL_RESET"
+		log_er "Failed to build ${CL_GREY}yay$CL_RESET"
 		cd ..
-		rm -rf $1
-		rm -f $1.tar.gz
+		rm -rf yay-bin
 		exit 1
 	else
-		log_ok "Install $CL_GREY$1$CL_RESET"
+		log_ok "Installed ${CL_GREY}yay$CL_RESET"
 	fi
 	cd ..
-	rm -rf $1
-	rm -f $1.tar.gz
+	rm -rf yay-bin
 }
 
 # $1 - device
@@ -215,6 +206,15 @@ function set_large_font {
 	setfont ter-132n
 }
 
+function enable_service {
+  log_tx "Enabling service $CL_GREY$1$CL_RESET..."
+  systemctl enable $1.service &>/dev/null
+  if [ $? -ne 0 ]; then
+    log_er "Failed to enable service $CL_GREY$1$CL_RESET"
+  fi
+  log_ok "Enabled service $CL_GREY$1$CL_RESET"
+}
+
 # ---------------------------------------------------------------------------- #
 # Stage One                                                                    #
 # ---------------------------------------------------------------------------- #
@@ -241,6 +241,8 @@ function stage_one {
 	input "Type boot mode (${CL_YELLOW}BIOS$CL_RESET or ${CL_YELLOW}UEFI$CL_RESET), followed by $MS_ENTER:" usr_boot_type
 	input "Type desired hostname, followed by $MS_ENTER:" usr_hostname
 	input_pass "Type root password, followed by $MS_ENTER:" usr_root_pass
+	input "Type desired username, followed by $MS_ENTER:" usr_user
+	input_pass "Type password for ${CL_GREY}$usr_user$CL_RESET, followed by $MS_ENTER:" usr_user_pass
 
 	# -- Setup clock
 	log_tx "Updating clock..."
@@ -360,6 +362,8 @@ function stage_one {
 	mkdir /mnt/ricedata
 	printf "$usr_region/$usr_city" > /mnt/ricedata/timezone
 	printf "$usr_root_pass" > /mnt/ricedata/root_pass
+	printf "$usr_user" > /mnt/ricedata/user
+	printf "$usr_user_pass" > /mnt/ricedata/user_pass
 	printf "$usr_disk" > /mnt/ricedata/disk
 	printf "$usr_boot_type" > /mnt/ricedata/boot_type
 	printf "$usr_large_font" > /mnt/ricedata/large_font
@@ -396,6 +400,23 @@ function stage_two {
 	root_pass=$(cat /ricedata/root_pass)
 	printf "$root_pass\n$root_pass\n" | passwd &>/dev/null
 	log_ok "Set root password"
+	
+	user=$(cat /ricedata/user)
+	user_pass=$(cat /ricedata/user_pass)
+	
+	install_pac sudo
+	printf "%%wheel\tALL=(ALL) ALL\n$user\tALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+	install_pac zsh
+	install_pac git
+	
+	log_tx "Creating account ${CL_GREY}$user$CL_RESET..."
+	useradd -G wheel -m -s $(which zsh) $user &>/dev/null
+	printf "$user_pass\n$user_pass\n" | passwd $user &>/dev/null
+	log_ok "Created account ${CL_GREY}$user$CL_RESET"
+	
+	install_yay $user
+	
+	head -n -1 /etc/sudoers > /etc/sudoers
 
 	log_tx "Installing bootloader..."
 	boot_type=$(cat /ricedata/boot_type)
@@ -416,6 +437,47 @@ function stage_two {
 	fi
 	grub-mkconfig -o /boot/grub/grub.cfg &>/dev/null
 	log_ok "Installed bootloader"
+	
+  install_pac xorg-server
+  install_pac cheese
+  install_pac file-roller
+  install_pac gdm
+  install_pac gnome-backgrounds
+  install_pac gnome-calculator
+  install_pac gnome-calendar
+  install_pac gnome-clocks
+  install_pac gnome-disk-utility
+  install_pac gnome-keyring
+  install_pac gnome-logs
+  install_pac gnome-maps
+  install_pac gnome-menus
+  install_pac gnome-music
+  install_pac gnome-photos
+  install_pac gnome-remote-desktop
+  install_pac gnome-screenshot
+  install_pac gnome-session
+  install_pac gnome-settings-daemon
+  install_pac gnome-shell
+  install_pac gnome-shell-extensions
+  install_pac gnome-software
+  install_pac gnome-system-monitor
+  install_pac gnome-terminal
+  install_pac gnome-themes-extra
+  install_pac gnome-weather
+  install_pac gvfs
+  install_pac gvfs-afc
+  install_pac gvfs-goa
+  install_pac gvfs-google
+  install_pac gvfs-gphoto2
+  install_pac gvfs-mtp
+  install_pac gvfs-smb
+  install_pac mutter
+  install_pac nautilus
+  install_pac networkmanager
+  install_pac sushi
+  install_pac arc-gtk-theme
+  enable_service gdm
+  enable_service NetworkManager
 
 	log_tx "Cleaning up..."
 	rm -rf /ricedata &>/dev/null
