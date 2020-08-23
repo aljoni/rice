@@ -334,25 +334,25 @@ function stage_one {
 
 	# -- Set locale
 	log_tx "Setting locale..."
-	printf "LANG=$usr_locale.UTF-8" > /mnt/etc/locale.conf
-	sed -i "/^#$usr_locale/s/^#//" /mnt/etc/locale.gen
+	printf "LANG=$usr_locale.UTF-8" > /etc/locale.conf
+	sed -i "/^#$usr_locale/s/^#//" /etc/locale.gen
 	log_ok "Set locale"
 
 	# -- Set hostname
 	log_tx "Setting hostname..."
-	printf $usr_hostname > /mnt/etc/hostname
+	printf $usr_hostname > /etc/hostname
 	printf "127.0.0.1\tlocalhost\n::1\tlocalhost\n127.0.0.1\t$usr_hostname.localdomain  $usr_hostname" > /mnt/etc/hosts
 	log_ok "Set hostname"
 
 	# -- Set keymap
 	log_tx "Setting keymap..."
-	printf "KEYMAP=$usr_keymap" > /mnt/etc/vconsole.conf
+	printf "KEYMAP=$usr_keymap" > /etc/vconsole.conf
 	log_ok "Set keymap"
 
 	# -- Set terminal font (large font)
 	if [ ${usr_large_font,,} == "yes" ]; then
 		log_tx "Setting large font..."
-		printf "\nFONT=ter-132n" >> /mnt/etc/vconsole.conf
+		printf "\nFONT=ter-132n" >> /etc/vconsole.conf
 		log_ok "Set large font"
 	fi
 
